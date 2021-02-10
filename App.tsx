@@ -5,7 +5,9 @@ import {
   View,
   Dimensions,
   Image,
-  Animated
+  Animated,
+  Pressable,
+  FlatList, Text
 } from 'react-native';
 
 const data = [
@@ -14,20 +16,34 @@ const data = [
   'https://cdn.dribbble.com/users/3281732/screenshots/10940512/media/b2a8ea95c550e5f09d0ca07682a3c0da.jpg'
 ]
 
-const { width } = Dimensions.get('screen')
+const { width, height } = Dimensions.get('screen')
 
-const imageW = width * 0.7
-const imageH = imageW * 1.54
+const imageW = width * 0.8
+const imageH = height * 0.5
+const ITEM_PADDING = 10
 
 export default function App() {
   const scrollX = React.useRef(new Animated.Value(0)).current
+  const ref = React.useRef<FlatList>(null)
+  const dataToRender = ['', ...data, '']
+
+  const onItemPress = React.useCallback((itemIndex: number) => {
+    ref.current?.scrollToOffset({
+      offset: imageW * (itemIndex -  1)
+    })
+  }, [])
 
   function renderBackground() {
-    return data.map((image, index) => {
+    return dataToRender.map((image, index) => {
+
+      if (!image) {
+        return null
+      }
+
       const inputRange = [
-        (index - 1) * width,
-        index * width,
-        (index + 1) * width
+        (index - 2) * imageW,
+        (index - 1) * imageW,
+        (index) * imageW
       ]
 
       const opacity = scrollX.interpolate({
@@ -49,14 +65,59 @@ export default function App() {
     })
   }
 
-  function renderCard({ item }: { item: string }) {
+  function renderCard({ item, index }: { item: string, index:  number }) {
+
+    if (!item) {
+      return <View style={{ width: (width - imageW) / 2, height: height * 0.5 }} />
+    }
+
+    const inputRange = data.map((_, dataIndex) => (index - ((data.length - 1) - dataIndex)) * imageW)
+    const outputRange = data.map((_, dataIndex) => {
+      if (dataIndex === Math.floor(data.length /  2)) {
+        return imageH * 1.2
+      } 
+      return imageH * 0.9
+    })
+
+    const interpolatedHeight = scrollX.interpolate({
+      inputRange,
+      outputRange
+    })
+
     return (
-      <View style={styles.cardWrapper}>
-        <Image
-          source={{ uri: item }}
-          style={styles.image}
-        />
-      </View>
+      <Pressable onPress={() => onItemPress(index)}>
+        <Animated.View style={[styles.cardWrapper, { height: interpolatedHeight, justifyContent: 'space-between' }]}>
+          <Image
+            source={{ uri: item }}
+            style={styles.image}
+            />
+            <Text style={{ 
+              fontSize: 25, 
+              backgroundColor: 'orange', 
+              paddingHorizontal: 20, 
+              borderRadius: 6
+               }}>
+                {`TOP ${index}`}
+            </Text>
+            <Text style={{ 
+              fontSize: 25, 
+              backgroundColor: 'orange', 
+              paddingHorizontal: 20, 
+              borderRadius: 6
+               }}>
+                {`MIDDLE ${index}`}
+            </Text>
+            <Text style={{ 
+              fontSize: 25, 
+              backgroundColor: 'orange', 
+              paddingHorizontal: 20, 
+              borderRadius: 6,
+              marginBottom: 20
+               }}>
+                {`BOTTOM ${index}`}
+            </Text>
+        </Animated.View>
+      </Pressable>
     )
   }
 
@@ -67,15 +128,19 @@ export default function App() {
         {renderBackground()}
       </View>
       <Animated.FlatList
-        data={data}
+        ref={ref}
+        data={dataToRender}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: true }
+          { useNativeDriver: false }
         )}
         keyExtractor={(_, index) => index.toString()}
         horizontal
         pagingEnabled
         renderItem={renderCard}
+        contentContainerStyle={{ alignItems: 'center' }}
+        snapToInterval={imageW}
+        snapToAlignment='start'
       />
     </View>
   );
@@ -87,22 +152,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#000'
   },
   cardWrapper: {
-    width,
-    justifyContent: 'center',
+    width: imageW,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowOffset: {
-      width: 0,
-      height: 0
-    },
-    shadowRadius: 20,
-    elevation: 10
+    padding: ITEM_PADDING
   },
   image: {
-    width: imageW,
-    height: imageH,
+    position: 'absolute',
     resizeMode: 'cover',
-    borderRadius: 16
+    borderRadius: 16,
+    width: '100%',
+    height: '100%'
   }
 });
